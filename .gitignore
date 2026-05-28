@@ -1,2 +1,6 @@
 alesrpi
 alesrpi.pub
+
+kubeconfig.yaml
+.ansible/
+*.retry

@@ -1,0 +1,4 @@
+---
+- name: Reboot Pi
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply kernel cgroup parameters for K8s"

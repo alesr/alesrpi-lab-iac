@@ -1,0 +1,30 @@
+---
+- name: Check if cgroups are enabled in boot configuration
+  ansible.builtin.command: grep -q "cgroup_enable=memory" /boot/firmware/cmdline.txt
+  register: cgroups_check
+  failed_when: false
+  changed_when: false
+
+- name: Enable cgroups for memory management
+  ansible.builtin.command: sed -i '$ s/$/ cgroup_memory=1 cgroup_enable=memory/' /boot/firmware/cmdline.txt
+  when: cgroups_check.rc != 0
+  notify: Reboot Pi
+
+- name: Flush handlers immediately if reboot is required
+  ansible.builtin.meta: flush_handlers
+
+- name: Download and execute K3s installation script
+  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Change kubeconfig permissions to be readable by the administrator
+  ansible.builtin.file:
+    path: /etc/rancher/k3s/k3s.yaml
+    mode: "0644"
+
+- name: Fetch kubeconfig back to Mac workspace
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ./kubeconfig.yaml
+    flat: yes
