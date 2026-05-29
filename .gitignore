@@ -4,3 +4,6 @@ alesrpi.pub
 kubeconfig.yaml
 .ansible/
 *.retry
+.vault_pass_file
+
+.venv

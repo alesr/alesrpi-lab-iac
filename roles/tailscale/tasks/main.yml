@@ -1,0 +1,26 @@
+---
+- name: Install Tailscale
+  become: true
+  ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+  args:
+    creates: /usr/bin/tailscale
+
+- name: Check if Tailscale is running
+  become: true
+  ansible.builtin.command: tailscale status
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+- name: Authenticate Tailscale
+  become: true
+  ansible.builtin.command: "tailscale up --authkey={{ tailscale_auth_key }} --accept-routes"
+  when: "'Tailscale is stopped' in tailscale_status.stdout or 'Tailscale is running' not in tailscale_status.stdout"
+  notify: Restart Tailscale
+
+- name: Ensure Tailscale is enabled at boot
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: yes
+    state: started
