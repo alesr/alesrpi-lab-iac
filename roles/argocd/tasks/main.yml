@@ -1,0 +1,40 @@
+---
+- name: Add ArgoCD Helm Chart Repository
+  kubernetes.core.helm_repository:
+    name: argo
+    repo_url: https://argoproj.github.io/argo-helm
+
+- name: Deploy ArgoCD via Helm
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    chart_version: "{{ argocd_version }}"
+    release_namespace: argocd
+    create_namespace: true
+    kubeconfig: "./kubeconfig.yaml"
+    values:
+      global:
+        image:
+          imagePullPolicy: IfNotPresent
+      server:
+        service:
+          type: ClusterIP
+      repoServer:
+        resources:
+          limits:
+            memory: 512Mi
+            cpu: 500m
+          requests:
+            memory: 128Mi
+            cpu: 100m
+
+- name: Wait for ArgoCD Server to become ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "./kubeconfig.yaml"
+    kind: Deployment
+    name: argocd-server
+    namespace: argocd
+  register: argocd_server_status
+  until: argocd_server_status.resources[0].status.readyReplicas | default(0) > 0
+  retries: 20
+  delay: 10

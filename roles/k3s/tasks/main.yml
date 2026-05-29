@@ -14,17 +14,52 @@
   ansible.builtin.meta: flush_handlers
 
 - name: Download and execute K3s installation script
-  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION="{{ k3s_version }}"
+    sh -s -
   args:
     creates: /usr/local/bin/k3s
 
-- name: Change kubeconfig permissions to be readable by the administrator
+- name: Ensure K3s configuration directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Apply declarative K3s configuration
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      tls-san:
+        - "{{ master_ip }}"
+      disable:
+        - metrics-server
+    mode: "0644"
+  register: k3s_config
+
+- name: Restart K3s to apply config changes
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: yes
+  when: k3s_config.changed
+
+- name: Change kubeconfig permissions to be readable
   ansible.builtin.file:
     path: /etc/rancher/k3s/k3s.yaml
     mode: "0644"
 
-- name: Fetch kubeconfig back to Mac workspace
+- name: Fetch kubeconfig back to local workspace
   ansible.builtin.fetch:
     src: /etc/rancher/k3s/k3s.yaml
     dest: ./kubeconfig.yaml
     flat: yes
+
+- name: Sanitize kubeconfig local loopback address to Master IP
+  delegate_to: localhost
+  become: false
+  ansible.builtin.replace:
+    path: ./kubeconfig.yaml
+    regexp: '127\.0\.0\.1'
+    replace: "{{ master_ip }}"
