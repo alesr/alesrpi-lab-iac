@@ -1,11 +1,20 @@
 # alesrpi-lab-iac
 
+Provision K8s and ~~ArgoCD~~ in Raspberry Pi.
+
 ## Setup
 
 ### 1. Prerequisites
 
-* **Ansible** (`brew install ansible`)
-* **Kubectl** (`brew install kubernetes-cli`)
+```bash
+brew install ansible kubernetes-cli helm
+
+ansible-galaxy collection install kubernetes.core
+
+python3 -m venv .venv
+source .venv/bin/activate.fish
+pip install kubernetes pyyaml
+```
 
 ### 2. Enable passwordless sudo for Ansible
 
@@ -23,17 +32,17 @@ ansible-playbook site.yml
 set -Ux KUBECONFIG $PWD/kubeconfig.yaml
 ```
 
-### 4. Swap rbpi local loopback address
-
-```fish
-# extract IP and update config file
-set PI_IP (ssh -G rbpi | awk '/^hostname / {print $2}')
-sed -i '' "s/127.0.0.1/$PI_IP/g" kubeconfig.yaml
-set -Ux KUBECONFIG $PWD/kubeconfig.yaml
-```
-
-### 5. Check
+### 4. Check
 
 ```bash
 kubectl get nodes
+# kubectl get pods -n argocd
 ```
+
+<!--### 5. Access the ArgoCD Dashboard
+
+```bash
+# get password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```-->
